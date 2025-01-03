@@ -23,3 +23,5 @@ keyboard>=0.13.0  # For key detection
 
 # Add to existing requirements
 vgamepad>=0.0.8  # For virtual Xbox controller 
+
+transformers>=4.30.0  # For vision transformer 

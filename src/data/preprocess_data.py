@@ -14,38 +14,41 @@ def compute_dataset_stats(clip_dir, sample_size=100):
     # Randomly sample frames
     sample_indices = np.random.choice(len(frames), min(sample_size, len(frames)), replace=False)
     
-    # Collect pixel values
+    # Collect pixel values in YUV space
     pixels = []
     for idx in sample_indices:
         frame_path = os.path.join(clip_dir, "frames", frames[idx]['file'])
         frame = cv2.imread(frame_path)
         if frame is not None:
-            pixels.extend(frame.reshape(-1, 3))
+            # Convert to YUV color space
+            frame_yuv = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
+            pixels.extend(frame_yuv.reshape(-1, 3))
     
     pixels = np.array(pixels)
-    mean = pixels.mean(axis=0) / 255.0  # Normalize to 0-1 range
+    mean = pixels.mean(axis=0) / 255.0
     std = pixels.std(axis=0) / 255.0
     
     return mean, std
 
 def preprocess_frame(frame, mean, std):
     """
-    Preprocess a single frame
-    Args:
-        frame: BGR image
-        mean: Channel-wise mean (BGR)
-        std: Channel-wise std (BGR)
-    Returns:
-        Tuple of (cropped_frame, processed_frame)
+    Preprocess a single frame following PilotNet paper:
+    - Convert to YUV
+    - Crop top portion
+    - Resize to 66x200
+    - Normalize
     """
     height = frame.shape[0]
     crop_pixels = int(height * CROP_TOP_PERCENT / 100)
     
-    # Crop top portion
-    cropped = frame[crop_pixels:, :]
+    # Convert to YUV color space
+    frame_yuv = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
     
-    # Resize to target size
-    resized = cv2.resize(cropped, (INPUT_WIDTH, INPUT_HEIGHT))
+    # Crop top portion
+    cropped = frame_yuv[crop_pixels:, :]
+    
+    # Resize to PilotNet dimensions
+    resized = cv2.resize(cropped, (200, 66))
     
     # Normalize with mean and std
     normalized = (resized / 255.0 - mean) / std
@@ -145,8 +148,8 @@ def process_clip(clip_dir):
         processed_filename = f"processed_{frame_data['frame']:06d}.npy"
         np.save(os.path.join(processed_dir, processed_filename), stacked)
         
-        # Extract relevant telemetry with stack-aware yaw difference
-        telemetry = process_telemetry(frame_data, data_stack[:-1])  # Exclude current frame
+        # Extract relevant telemetry
+        telemetry = process_telemetry(frame_data, data_stack[:-1])
         
         # Update frame data
         frame_data = frame_data.copy()
@@ -164,27 +167,14 @@ def process_clip(clip_dir):
         'frames': processed_frames,
         'preprocessing': {
             'crop_top_percent': CROP_TOP_PERCENT,
-            'target_size': [INPUT_HEIGHT, INPUT_WIDTH],
+            'target_size': [66, 200],  # PilotNet dimensions
+            'color_space': 'YUV',
             'channels': 3 * FRAME_STACK_SIZE,
             'normalization': {
                 'mean': mean.tolist(),
                 'std': std.tolist()
             },
-            'frame_stack_size': FRAME_STACK_SIZE,
-            'frame_padding': 'duplicate_first',
-            'telemetry_features': [
-                'throttle',    # Binary (0/1)
-                'brake',       # Binary (0/1)
-                'steering',    # Float (-1.0 to 1.0)
-                'speed',       # Float (m/s)
-                'yaw',        # Float (degrees)
-                'yaw_diff'    # Float (degrees/frame across stack)
-            ],
-            'yaw_diff_calculation': f'Rate of change across {FRAME_STACK_SIZE} frames',
-            'intermediate_files': {
-                'cropped': 'cropped/cropped_*.jpg',
-                'processed': 'processed/processed_*.npy'
-            }
+            'frame_stack_size': FRAME_STACK_SIZE
         }
     }
     

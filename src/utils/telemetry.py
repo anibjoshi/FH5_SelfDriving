@@ -49,8 +49,8 @@ class TelemetryReader:
             
             telemetry = {
                 # Control inputs
-                'throttle': throttle,        # 0.0 to 1.0
-                'brake': brake,              # 0.0 to 1.0
+                'throttle': throttle_raw,        # 0.0 to 1.0
+                'brake': brake_raw,              # 0.0 to 1.0
                 'steering': steer_normalized, # -1.0 to 1.0
                 
                 # Basic motion
