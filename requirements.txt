@@ -1,0 +1,25 @@
+# Core libraries
+numpy>=1.21.0
+opencv-python>=4.5.0
+pillow>=8.0.0
+tqdm>=4.65.0
+
+# Data collection
+mss>=6.1.0  # For screen capture
+pywin32>=228  # For Windows-specific features
+
+# Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+scikit_learn>=1.0.0
+pandas>=1.3.0
+
+# Optional but recommended
+matplotlib>=3.4.0  # For visualization
+tensorboard>=2.10.0  # For training monitoring
+wandb>=0.13.0  # For experiment tracking 
+
+keyboard>=0.13.0  # For key detection 
+
+# Add to existing requirements
+vgamepad>=0.0.8  # For virtual Xbox controller 

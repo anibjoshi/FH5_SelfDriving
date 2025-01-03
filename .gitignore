@@ -2,3 +2,7 @@ venv
 __MACOSX
 __pycache__
 deep_drive_10K
+archive
+data/raw/*
+data/curated/*
+data/processed/*
