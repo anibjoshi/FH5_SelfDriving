@@ -6,11 +6,17 @@ from tqdm import tqdm
 import tkinter as tk
 from tkinter import ttk
 import shutil
+from pathlib import Path
 from src.config import *
 
 class DataCurator:
     def __init__(self, session_dir):
-        self.session_dir = session_dir
+        # Convert session_dir to full path relative to RAW_DATA_DIR
+        self.session_dir = os.path.join(RAW_DATA_DIR, session_dir)
+        self.session_dir = os.path.abspath(self.session_dir)
+        
+        if not os.path.exists(self.session_dir):
+            raise FileNotFoundError(f"Session directory not found: {self.session_dir}")
         
         # Load data from JSONL
         self.frame_data = []
@@ -36,6 +42,7 @@ class DataCurator:
     def load_data(self):
         """Load data from JSONL file"""
         jsonl_path = os.path.join(self.session_dir, "data.jsonl")
+        print(f"Loading data from: {jsonl_path}")
         self.frames_dir = os.path.join(self.session_dir, "frames")
         
         if not os.path.exists(jsonl_path):

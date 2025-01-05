@@ -4,6 +4,7 @@ import json
 import os
 from tqdm import tqdm
 from collections import deque
+from pathlib import Path
 from src.config import *
 
 def compute_dataset_stats(clip_dir, sample_size=100):
@@ -80,8 +81,11 @@ def process_telemetry(frame_data, frame_buffer_data):
         'angular_velocity_y': float(telemetry.get('angular_velocity_y', 0.0))
     }
 
-def process_clip(clip_dir):
+def process_clip(clip_dir: str):
     """Process all frames in a curated clip"""
+    if not os.path.exists(clip_dir):
+        raise FileNotFoundError(f"Clip directory not found: {clip_dir}")
+    
     # Compute dataset statistics
     print("Computing dataset statistics...")
     mean, std = compute_dataset_stats(clip_dir)
@@ -183,15 +187,21 @@ def process_clip(clip_dir):
     
     print(f"Processed clip saved to: {processed_base}")
 
-def process_session(session_dir):
+def process_session(session_dir: str):
     """Process all clips in a curated session directory"""
+    # Convert session_dir to full path relative to CURATED_DATA_DIR
+    session_dir = os.path.join(CURATED_DATA_DIR, session_dir)
+    session_dir = os.path.abspath(session_dir)
+    
     if not os.path.exists(session_dir):
-        print(f"Error: Session directory not found: {session_dir}")
-        return
-        
+        raise FileNotFoundError(f"Session directory not found: {session_dir}")
+    
     # Process each clip in the session
     clips = [d for d in os.listdir(session_dir) 
             if os.path.isdir(os.path.join(session_dir, d)) and d.startswith('clip_')]
+    
+    if not clips:
+        raise ValueError(f"No clips found in session directory: {session_dir}")
     
     print(f"Found {len(clips)} clips in {session_dir}")
     for clip in sorted(clips):

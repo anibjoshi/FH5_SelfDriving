@@ -3,6 +3,8 @@ import numpy as np
 import cv2
 import mss
 import vgamepad as vg
+import random
+import time
 from pathlib import Path
 from src.model.cnn.model import CNNModel
 from src.utils.telemetry import TelemetryReader
@@ -147,12 +149,85 @@ class DrivingAgent:
         self.controller.apply_controls(steering, throttle, brake)
         return steering, throttle, brake
 
-def inference(model_path: str):
-    """Run inference loop"""
-    agent = DrivingAgent(model_path)
+class RandomAgent:
+    """Generate smooth random controls for testing"""
+    def __init__(self):
+        self.controller = VirtualController()
+        self.current_steering = 0.0
+        self.current_throttle = 0.0
+        self.current_brake = 0.0
+        
+        # Control smoothing
+        self.steering_step = 0.1
+        self.pedal_step = 0.1
+        
+        # Target values
+        self.target_steering = 0.0
+        self.target_throttle = 0.0
+        self.target_brake = 0.0
+        
+        # Update targets periodically
+        self.last_target_update = time.time()
+        self.target_update_interval = 2.0  # seconds
+    
+    def _update_targets(self):
+        """Randomly update target values"""
+        self.target_steering = random.uniform(-1.0, 1.0)
+        
+        # Randomly choose between acceleration and braking
+        if random.random() < 0.8:  # 80% chance of throttle
+            self.target_throttle = random.uniform(0.3, 1.0)
+            self.target_brake = 0.0
+        else:
+            self.target_throttle = 0.0
+            self.target_brake = random.uniform(0.3, 1.0)
+    
+    def _smooth_control(self, current, target, step):
+        """Smoothly adjust current value toward target"""
+        if current < target:
+            return min(current + step, target)
+        else:
+            return max(current - step, target)
+    
+    def step(self):
+        """Update and apply controls"""
+        # Update targets periodically
+        current_time = time.time()
+        if current_time - self.last_target_update > self.target_update_interval:
+            self._update_targets()
+            self.last_target_update = current_time
+        
+        # Smooth controls
+        self.current_steering = self._smooth_control(
+            self.current_steering, self.target_steering, self.steering_step)
+        self.current_throttle = self._smooth_control(
+            self.current_throttle, self.target_throttle, self.pedal_step)
+        self.current_brake = self._smooth_control(
+            self.current_brake, self.target_brake, self.pedal_step)
+        
+        # Apply controls
+        self.controller.apply_controls(
+            self.current_steering, 
+            self.current_throttle, 
+            self.current_brake
+        )
+        
+        return self.current_steering, self.current_throttle, self.current_brake
+
+def inference(model_path: str = None):
+    """Run inference loop with either trained model or random agent"""
+    if model_path:
+        agent = DrivingAgent(model_path)
+        print("Using trained model for control")
+    else:
+        agent = RandomAgent()
+        print("Using random agent for control")
+    
+    print("\nWaiting 10 seconds to start...")
+    time.sleep(10)
+    print("Starting! Press Ctrl+C to stop")
     
     try:
-        print("Starting inference... Press Ctrl+C to stop")
         while True:
             # Get and apply controls
             steering, throttle, brake = agent.step()
@@ -160,13 +235,16 @@ def inference(model_path: str):
             # Print current controls
             print(f"\rSteering: {steering:+.2f} | Throttle: {throttle:.2f} | Brake: {brake:.2f}", end='')
             
+            # Small sleep to prevent maxing CPU
+            time.sleep(0.01)
+            
     except KeyboardInterrupt:
         print("\nStopping inference...")
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('model', help='Path to trained model')
+    parser.add_argument('--model', help='Path to trained model (optional)')
     args = parser.parse_args()
     
     inference(args.model)

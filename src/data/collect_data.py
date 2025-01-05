@@ -92,6 +92,7 @@ class DataCollector:
         # Get telemetry
         telemetry = self.telemetry_reader.get_telemetry()
         
+        
         # Save frame
         frame_filename = f"frame_{self.frame_count:06d}.jpg"
         cv2.imwrite(os.path.join(self.frames_dir, frame_filename), frame)

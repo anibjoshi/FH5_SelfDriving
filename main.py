@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
-from src.data.collect_data import collect_data
-from src.data.curate_data import curate_data
+from src.data.collect_data import DataCollector
+from src.data.curate_data import DataCurator
 from src.data.preprocess_data import process_session
 from src.model.cnn.train import train
 from src.model.inference import inference
@@ -14,18 +14,20 @@ def main():
     # Only required for curation and preprocessing
     parser.add_argument('--session', help='Session directory to curate/preprocess')
     
-    # Only required for inference
+    # Optional for drive (if not provided, uses random agent)
     parser.add_argument('--model', help='Path to trained model')
     
     args = parser.parse_args()
     
     if args.action == 'collect':
-        collect_data()
+        collector = DataCollector()
+        collector.run()
     
     elif args.action == 'curate':
         if not args.session:
             parser.error('curate requires --session')
-        curate_data(args.session)
+        curator = DataCurator(args.session)
+        curator.run()
     
     elif args.action == 'preprocess':
         if not args.session:
@@ -36,9 +38,7 @@ def main():
         train()
     
     elif args.action == 'drive':
-        if not args.model:
-            parser.error('drive requires --model')
-        inference(args.model)
+        inference(args.model)  # If model is None, will use random agent
 
 if __name__ == '__main__':
     main() 
